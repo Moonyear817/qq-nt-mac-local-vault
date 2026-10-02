@@ -36,7 +36,7 @@ SKILL="$HOME/.codex/skills/yichen-qq-local-vault"
 
 refresh 读取私有 `kdf-capture.jsonl` 的已捕获口令材料，逐库派生并认证密钥；任何页认证失败或 SQLite 完整性失败均拒绝发布该库，不把乱码标为成功。WAL 校验头、连续帧校验和、salt 和加密页认证后仅应用最后一次提交之前的帧。原始数据库只读取；QQ 自身运行会继续更新原库，离线档案始终是快照。
 
-19 个加密库的当前快照在 `decrypted-original/`；派生正文查询库和 JSONL 在 `archive/`；验证证据为私有 `verification-report.json`、`archive/archive-report.json`。
+默认已解密库位置为 `decrypted-original/`，默认派生归档位置为 `archive/`；自定义快照需显式指定 `build --db`，查询时用 `--archive` 指向对应的 `messages.sqlite`。验证证据为私有 `verification-report.json`、`archive/archive-report.json`。首次安装环境与依赖见 [README.md](README.md)。
 
 refresh 报告中的 `no_verified_key_or_header_only` 包含：1024 字节头部空壳、无需解密的标准 SQLite 文件、以及未找到有效口令的文件。应检查类型再说明，不能把三者全部称为失败。标准 SQLite 库可复制并只读验证，不套加密解码器。
 

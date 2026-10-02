@@ -20,3 +20,15 @@ inspection/
 qa/
 QQ-debug.app/
 QQ-original*/
+
+.DS_Store
+.venv/
+venv/
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.partial
+*.app/
+*.zip

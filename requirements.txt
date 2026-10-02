@@ -1,0 +1,3 @@
+# Versions used in the validated local runtime.
+pycryptodome==3.23.0
+frida==17.20.0
