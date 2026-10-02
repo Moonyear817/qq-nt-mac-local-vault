@@ -1,6 +1,6 @@
-# QQ NT Mac 本地聊天库 Skill
+# Monoya QQ NT Mac 本地聊天库 Skill
 
-解密并离线查询本机 QQ NT 聊天库，提取消息正文、建立可搜索归档，按会话、关键词和时间查询或导出。Skill 标识为 `yichen-qq-local-vault`，可用于 Codex 或 Claude Code。
+解密并离线查询本机 QQ NT 聊天库，提取消息正文、建立可搜索归档，按会话、关键词和时间查询或导出。Skill 标识为 `monoya-qq-local-vault`，可用于 Codex 或 Claude Code。
 
 仓库只包含代码和技术说明。密钥、账号标识、聊天记录、数据库及本机验证报告不随仓库分发。仅处理用户授权的本机账号数据，不补齐云端未下载历史。
 
@@ -13,10 +13,10 @@
 
 ## 安装
 
-下面将 Skill 安装到 Codex 的个人技能目录。Claude Code 可将 `SKILL` 改为 `$HOME/.claude/skills/yichen-qq-local-vault`。私有仓库需要 GitHub 访问权限。
+下面将 Skill 安装到 Codex 的个人技能目录。Claude Code 可将 `SKILL` 改为 `$HOME/.claude/skills/monoya-qq-local-vault`。私有仓库需要 GitHub 访问权限。
 
 ```sh
-SKILL="$HOME/.codex/skills/yichen-qq-local-vault"
+SKILL="$HOME/.codex/skills/monoya-qq-local-vault"
 VAULT="$HOME/Library/Application Support/qq-local-vault"
 git clone https://github.com/Moonyear817/qq-nt-mac-local-vault.git "$SKILL"
 mkdir -p "$VAULT"

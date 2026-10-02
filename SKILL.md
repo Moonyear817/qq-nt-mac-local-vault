@@ -1,9 +1,9 @@
 ---
-name: yichen-qq-local-vault
+name: monoya-qq-local-vault
 description: 解密并离线查询本机 QQ NT Mac 聊天库，建立正文和媒体索引，按会话或关键词导出聊天记录。用于 QQ 本地聊天记录、QQ 导出或 QQ 本地数字资产库；不处理微信或云端未下载历史。
 ---
 
-# QQ NT Mac 本地数字资产库
+# Monoya QQ NT Mac 本地数字资产库
 
 已在本机 QQ 6.9.75 arm64 验证。默认使用现有离线档案查询；需要最新数据时再刷新。用户要求读取或导出授权范围内的本机账号数据时可以执行，不主动发送聊天、上传数据或更改系统安全设置。
 
@@ -15,7 +15,7 @@ description: 解密并离线查询本机 QQ NT Mac 聊天库，建立正文和�
 
 ```sh
 PY="$HOME/Library/Application Support/qq-local-vault/venv/bin/python"
-SKILL="$HOME/.codex/skills/yichen-qq-local-vault"
+SKILL="$HOME/.codex/skills/monoya-qq-local-vault"
 "$PY" "$SKILL/scripts/qq_vault.py" stats
 "$PY" "$SKILL/scripts/qq_vault.py" sessions --limit 100
 "$PY" "$SKILL/scripts/qq_vault.py" search '关键词' --limit 30
