@@ -1,0 +1,22 @@
+# 永不提交：Python 缓存
+__pycache__/
+*.pyc
+
+# 永不提交：任何本地数据 / 密钥 / 解密产物（这些只应存在于
+# ~/Library/Application Support/qq-local-vault/，不在本仓库）
+*.db
+*.sqlite
+*.jsonl
+*.pid
+*.log
+keys.json
+*config*.json
+*report*.json
+kdf-capture*
+snapshots/
+decrypted*/
+archive/
+inspection/
+qa/
+QQ-debug.app/
+QQ-original*/
