@@ -1,13 +1,30 @@
 ---
-name: yichen-qq-local-vault
+name: monoya-qq-local-vault
 description: 解密并离线查询本机 QQ NT Mac 聊天库，建立正文和媒体索引，按会话或关键词导出聊天记录。用于 QQ 本地聊天记录、QQ 导出或 QQ 本地数字资产库；不处理微信或云端未下载历史。
 ---
 
-# QQ NT Mac 本地数字资产库
+# Monoya QQ NT Mac 本地数字资产库
 
 已在本机 QQ 6.9.75 arm64 验证。默认使用现有离线档案查询；需要最新数据时再刷新。用户要求读取或导出授权范围内的本机账号数据时可以执行，不主动发送聊天、上传数据或更改系统安全设置。
 
 ## 现有入口
+
+### 已配置的精简归档
+
+先检查私有库是否存在 `retention-policy.json`。存在时，群名单和账号目录以该文件为准，只保留所选群的完整本地历史；不自动扩大到其他群或私聊。`archive/messages.sqlite` 查询入口不变，重复文本导出改为 `archive/messages.jsonl.gz`，完整消息行的原始字段与 BLOB 保存在所选账号的 `nt_db/nt_msg.db.gz`，群名信息保存在精简的 `group_info.db`。gzip 无损，不含图片、语音的实际媒体文件。
+
+这种模式用同目录 `scripts/selected_vault.py` 管理存储：`refresh` 使用已有密钥和临时目录验证新快照，筛选所选群、验证完整消息字段及压缩回读后替换当前归档，自动删除本次临时全量库；`rebuild` 从压缩原始记录重建。不要沿用下面的全量刷新示例积累独立快照。刷新仍要求 QQ 已正常退出，不自动退出或强杀 QQ。更新失败保留已验证归档；不会累积全量导出或历史副本。
+
+```sh
+PY="$HOME/Library/Application Support/qq-local-vault/venv/bin/python"
+SKILL="$HOME/.codex/skills/monoya-qq-local-vault"
+"$PY" "$SKILL/scripts/selected_vault.py" refresh
+"$PY" "$SKILL/scripts/selected_vault.py" rebuild
+```
+
+`compact-current --cleanup-generated` 只用于已授权的存储精简，会筛选并替换现有全量派生归档，并删除私有库内已确认未打开的实验克隆、实验程序、旧快照和 QA 临时文件。保留密钥、运行环境和校验报告，不改官方 QQ 容器。该动作不作为普通查询的前置步骤。实验程序副本清理后，如将来因新版本需要重新抓密钥，再按逆向参考重建副本。
+
+以下全量构建与刷新示例适用于**没有** `retention-policy.json` 的库。查询命令在两种模式中均适用。
 
 运行时：`~/Library/Application Support/qq-local-vault/venv/bin/python`。
 私有库：`~/Library/Application Support/qq-local-vault/`，密钥与明文不放在项目目录或聊天输出。
@@ -15,7 +32,7 @@ description: 解密并离线查询本机 QQ NT Mac 聊天库，建立正文和�
 
 ```sh
 PY="$HOME/Library/Application Support/qq-local-vault/venv/bin/python"
-SKILL="$HOME/.codex/skills/yichen-qq-local-vault"
+SKILL="$HOME/.codex/skills/monoya-qq-local-vault"
 "$PY" "$SKILL/scripts/qq_vault.py" stats
 "$PY" "$SKILL/scripts/qq_vault.py" sessions --limit 100
 "$PY" "$SKILL/scripts/qq_vault.py" search '关键词' --limit 30
@@ -36,7 +53,7 @@ SKILL="$HOME/.codex/skills/yichen-qq-local-vault"
 
 refresh 读取私有 `kdf-capture.jsonl` 的已捕获口令材料，逐库派生并认证密钥；任何页认证失败或 SQLite 完整性失败均拒绝发布该库，不把乱码标为成功。WAL 校验头、连续帧校验和、salt 和加密页认证后仅应用最后一次提交之前的帧。原始数据库只读取；QQ 自身运行会继续更新原库，离线档案始终是快照。
 
-19 个加密库的当前快照在 `decrypted-original/`；派生正文查询库和 JSONL 在 `archive/`；验证证据为私有 `verification-report.json`、`archive/archive-report.json`。
+默认已解密库位置为 `decrypted-original/`，默认派生归档位置为 `archive/`；自定义快照需显式指定 `build --db`，查询时用 `--archive` 指向对应的 `messages.sqlite`。验证证据为私有 `verification-report.json`、`archive/archive-report.json`。首次安装环境与依赖见 [README.md](README.md)。
 
 refresh 报告中的 `no_verified_key_or_header_only` 包含：1024 字节头部空壳、无需解密的标准 SQLite 文件、以及未找到有效口令的文件。应检查类型再说明，不能把三者全部称为失败。标准 SQLite 库可复制并只读验证，不套加密解码器。
 

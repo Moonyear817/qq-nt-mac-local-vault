@@ -1,58 +1,68 @@
-# yichen-qq-local-vault
+# Monoya QQ NT Mac 本地聊天库 Skill
 
-解密并离线查询**本机、本账号**的 QQ NT (macOS) 聊天库，提取消息正文（protobuf 解码）、建立可搜索归档，并按会话 / 关键词 / 时间范围查询和导出。定位对标微信版 `yichen-wechat-local-vault`。
+解密并离线查询本机 QQ NT 聊天库，提取消息正文、建立可搜索归档，按会话、关键词和时间查询或导出。Skill 标识为 `monoya-qq-local-vault`，可用于 Codex 或 Claude Code。
 
-> ⚠️ 仅用于访问你自己设备上、你自己 QQ 账号的本地数据（数字资产自主权 / 本地取证场景）。不处理他人数据，不触碰云端未下载的历史，不发送或上传聊天，不修改系统安全设置。
+仓库只包含代码和技术说明。密钥、账号标识、聊天记录、数据库及本机验证报告不随仓库分发。仅处理用户授权的本机账号数据，不补齐云端未下载历史。
 
-## 适用环境
+## 支持范围
 
-- Apple Silicon (arm64) macOS，SIP 可保持开启。
-- 已在 **QQ 6.9.75 (build 36580/36337)** 实测通过。脚本用 `wrapper.node` 的 SHA256 做版本护栏；换版本需重新定位偏移（见 `references/reverse-engineering.md`）。
+- Apple Silicon macOS，Python 3.11 或更新版本。
+- 已验证 QQ 6.9.75 arm64 的一个具体 `wrapper.node` 构建；捕获器严格核对 SHA256，不能保证相同版本号的其他构建可用。二进制指纹见 [技术说明](references/reverse-engineering.md)。
+- 解密逐页验证 HMAC，并执行 SQLite `integrity_check`；支持已提交 WAL 帧重放。
+- 正文提取保留多段文本顺序和非文本类型标签。卡片、转发和附件只解析部分元信息；不自动转写语音或恢复未下载附件。
 
-## 原理（已逆向确认）
+## 安装
 
-QQ NT 的库是 **SQLCipher 变体**：
-
-1. 文件前 **1024 字节**是 QQ 自定义明文头（魔数被改成 `SQLite header 3\0`、`QQ_NT DB` 标记、账号级密钥材料、页 HMAC 算法名、建库时间戳）；真正的加密数据从偏移 1024 起。
-2. **密钥只在运行中的 QQ 进程内存里**，磁盘上没有现成可用 key。
-3. 本版本把 OpenSSL 静态链接且 strip 了符号，页加密走 ARMv8 硬件 AES，常规 hook 点（软件 AES、CommonCrypto）都不触发。**可行路径是 hook `PKCS5_PBKDF2_HMAC`（通过错误字符串交叉引用定位其地址）**，在库打开派生密钥时截获 key + salt + 迭代次数。
-4. KDF 实为 **PBKDF2-HMAC-SHA512 / 4000 次 / 32 字节输出**（头里的 `HMAC_SHA1` 指的是*页* HMAC，不是 KDF）；每库用各自 salt 分别派生。解密后逐页 **HMAC 认证** + SQLite `integrity_check`，任一失败即拒绝发布该库，不把乱码当成功。
-
-完整技术细节见 [`references/reverse-engineering.md`](references/reverse-engineering.md)。
-
-## 脚本
-
-| 脚本 | 作用 |
-|---|---|
-| `scripts/capture_kdf.py` | frida spawn 可注入副本，hook `PKCS5_PBKDF2_HMAC` 捕获 KDF（key/salt/iter），写入私有 `kdf-capture.jsonl` |
-| `scripts/qq_vault.py` | 主入口：`refresh`（用已捕获材料逐库派生+认证解密）、`build`（解码 protobuf 正文、建归一化可搜索库）、`stats` / `sessions` / `search` / `export` |
-| `scripts/qq_decrypt.py` | 独立的分页解密器（跳过 1024 头 + 逐页 AES-CBC + 重建标准 SQLite） |
-| `scripts/qq_extract_key.py`, `scripts/qq_scan_key.py` | 早期探索用的抓 key / 内存扫描脚本（保留作参考） |
-
-## 用法
+下面将 Skill 安装到 Codex 的个人技能目录。Claude Code 可将 `SKILL` 改为 `$HOME/.claude/skills/monoya-qq-local-vault`。私有仓库需要 GitHub 访问权限。
 
 ```sh
-PY="$HOME/Library/Application Support/qq-local-vault/venv/bin/python"   # 带 frida + pycryptodome 的 venv
-SKILL="$HOME/.claude/skills/yichen-qq-local-vault"
+SKILL="$HOME/.codex/skills/monoya-qq-local-vault"
+VAULT="$HOME/Library/Application Support/qq-local-vault"
+git clone https://github.com/Moonyear817/qq-nt-mac-local-vault.git "$SKILL"
+mkdir -p "$VAULT"
+chmod 700 "$VAULT"
+python3 -m venv "$VAULT/venv"
+PY="$VAULT/venv/bin/python"
+"$PY" -m pip install -r "$SKILL/requirements.txt"
+```
 
-# 查询现有离线归档
+已有同名 Skill 时先检查现有内容，避免直接覆盖。安装依赖不会自动获取密钥或建立归档；新设备还需准备密钥捕获环境和本机数据库快照。
+
+## 首次建立归档
+
+`capture_kdf.py` 需要**事先准备好的可注入 QQ 副本**，默认位置为 `$VAULT/QQ-debug.app`。本仓库不自动生成、签名或配置该副本。先阅读 [技术说明](references/reverse-engineering.md) 中的路径区别：去掉沙盒权限的副本可能打开新的非沙盒目录，不能把新库误认为原账号历史库。
+
+```sh
+# 仅在副本和数据库路径已核对后运行；日志含密钥材料，留在私有目录
+"$PY" "$SKILL/scripts/capture_kdf.py" --app "$VAULT/QQ-debug.app" --duration 180
+
+# 捕获后正常退出 QQ 及实验副本，再创建新的快照和解密结果
+"$PY" "$SKILL/scripts/qq_vault.py" refresh --snapshot "$VAULT/snapshots/first" --out "$VAULT/decrypted/first"
+
+# 将占位路径替换为实际解密后的 nt_msg.db 路径
+"$PY" "$SKILL/scripts/qq_vault.py" build --db '/绝对路径/解密目录/nt_qq_账号目录/nt_db/nt_msg.db' --out "$VAULT/archive"
+```
+
+`build --db` 必须指向**已解密**的数据库。多个账号分别指定数据库及归档目录。新快照应使用新目录；不要覆盖原始库或依赖正在写入的数据库。
+
+## 查询与导出
+
+```sh
 "$PY" "$SKILL/scripts/qq_vault.py" stats
 "$PY" "$SKILL/scripts/qq_vault.py" sessions --limit 100
 "$PY" "$SKILL/scripts/qq_vault.py" search '关键词' --limit 30
-"$PY" "$SKILL/scripts/qq_vault.py" export --session '会话键' --table group_msg_table \
-    --out "$HOME/Library/Application Support/qq-local-vault/exports/selected.jsonl"
-
-# 有新消息时刷新（需先正常退出 QQ，才能复制库与 WAL）
-"$PY" "$SKILL/scripts/qq_vault.py" refresh --snapshot <新快照目录> --out <新解密目录>
-"$PY" "$SKILL/scripts/qq_vault.py" build   --db <新快照的 nt_msg.db 绝对路径> --out <新归档目录>
+"$PY" "$SKILL/scripts/qq_vault.py" export --session '会话键' --table group_msg_table --out "$VAULT/exports/selected.jsonl"
 ```
 
-## 数据与隐私边界
+自定义归档时，查询命令增加 `--archive '/绝对路径/messages.sqlite'`。完整工作流和结果解释见 [SKILL.md](SKILL.md)。
 
-- 所有**密钥、明文库、解密产物、归档**都放在私有目录 `~/Library/Application Support/qq-local-vault/`（权限 600/700），**不进本仓库**（见 `.gitignore`）。
-- 本仓库只含代码与逆向文档，不含任何聊天内容、密钥、账号标识。
-- 原库只读；QQ 自身运行会继续更新原库，离线归档始终是某次快照。
+## 文件
 
-## 致谢
+| 文件 | 用途 |
+|---|---|
+| `SKILL.md` | Agent 入口和操作边界 |
+| `scripts/capture_kdf.py` | 针对验证构建捕获 PBKDF2 调用，私有保存密钥材料 |
+| `scripts/qq_vault.py` | 认证解密、WAL 重放、正文归档、查询及导出 |
+| `references/reverse-engineering.md` | 已验证的参数、路径问题和一手参考来源 |
 
-QQ NT Mac 库格式逆向与密钥提取路径由 Claude Code 与 Codex 协作完成（2026-10）。
+早期不验证 HMAC 的解密器及实验性内存扫描器不包含在当前发布包中。密钥材料、原始快照和明文归档应放在仓库之外的私有目录；`.gitignore` 只是额外防护。
